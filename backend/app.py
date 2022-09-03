@@ -5,6 +5,7 @@ from typeform import Typeform
 from twilio.rest import Client
 import googlemaps
 import os
+import requests
 from geopy import distance
 app = Flask(__name__)
 
@@ -78,6 +79,7 @@ def stop(form_id):
     forms = Typeform(TYPEFORM).responses
     res = forms.list(form_id)
     groups = processData(res)
+    textMembers('test', 'test', groups)
     return groups
 
 def processData(data):   
@@ -88,19 +90,20 @@ def processData(data):
     # Process form data
     for response in data['items']:
         geocode = gmaps.geocode(response['answers'][2]['text'])[0]['geometry']['location']
-        print(response['answers'][3]['boolean'])
         if response['answers'][3]['boolean']:
               drivers.append({
                 'phone': response['answers'][1]['phone_number'],
                 'name': response['answers'][0]['text'],
-                'coordinates': (geocode['lat'], geocode['lng']),
+                'lat': geocode['lat'], 
+                'long': geocode['lng'],
                 'seats': response['answers'][4]['number']
               })
         else:
             people.append({
                 'phone': response['answers'][1]['phone_number'],
                 'name': response['answers'][0]['text'],
-                'coordinates': (geocode['lat'], geocode['lng']),
+                'lat': geocode['lat'], 
+                'long': geocode['lng'],
                 'seats': response['answers'][4]['number']
                 })
 
@@ -123,15 +126,31 @@ def processData(data):
             return {}
         return groups
 
-        def textMembers(groups):
-            client = Client(TWILIO_SID, TWILIO_TOKEN)
-            for group in groups:
-                waypoints = []
-                for member in group:
-                    if not member['name'] == group:
-                        client.messages.create(
-                            to=member['phone'],
-                            from_="+12058983255",
-                            body=f"Hello {member['name']}, you are in a carpool with {group[0]['name']}."
-                        )
-                        waypoints.append(member['coordinates']['lat']['lng'])
+def textMembers(dest, arrTime, groups):
+    dest = ['39.9717', '-74.1529']
+    gmaps = googlemaps.Client(key=MAPS_KEY)
+    client = Client(TWILIO_SID, TWILIO_TOKEN)
+
+    for group in groups:
+        waypoints = []
+        for member in groups[group]:
+            if not member['name'] == group:
+                client.messages.create(
+                    to=member['phone'],
+                    from_="+12058983255",
+                    body=f"Hello {member['name']}, you are in a carpool with {group}."
+                )
+                waypoints.append((member['lat'], member['long']))
+            else:
+                driver = member
+
+        params={
+            'api': 1,
+            'origin': (driver['lat'], driver['long']),
+            'destination': dest,
+            'waypoints': waypoints,
+        }
+        res = requests.get('https://www.google.com/maps/dir/', params=params)
+        print(res.text)
+
+        
