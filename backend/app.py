@@ -5,8 +5,7 @@ from typeform import Typeform
 from twilio.rest import Client
 import googlemaps
 import os
-import geopy
-
+from geopy import distance
 app = Flask(__name__)
 
 load_dotenv('.env')
@@ -94,14 +93,14 @@ def processData(data):
               drivers.append({
                 'phone': response['answers'][1]['phone_number'],
                 'name': response['answers'][0]['text'],
-                'coordinates': geocode,
+                'coordinates': (geocode['lat'], geocode['lng']),
                 'seats': response['answers'][4]['number']
               })
         else:
             people.append({
                 'phone': response['answers'][1]['phone_number'],
                 'name': response['answers'][0]['text'],
-                'coordinates': geocode,
+                'coordinates': (geocode['lat'], geocode['lng']),
                 'seats': response['answers'][4]['number']
                 })
 
@@ -115,7 +114,7 @@ def processData(data):
             if len(groups[driver['name']]) < spots[driver['name']] and people:
                 closest = people[0]
                 for person in people:
-                    if geopy.distance.distance(driver['coordinates']['lat']['lng'], person['coordinates']['lat']['lng']) < geopy.distance.distance(driver['coordinates']['lat']['lng'], closest['coordinates']['lat']['lng']):
+                    if distance.distance(driver['coordinates'], person['coordinates']) < distance.distance(driver['coordinates'], closest['coordinates']):
                         closest = person
                 groups[driver].append(closest)
                 people.remove(closest)
@@ -123,3 +122,16 @@ def processData(data):
         if people:
             return {}
         return groups
+
+        def textMembers(groups):
+            client = Client(TWILIO_SID, TWILIO_TOKEN)
+            for group in groups:
+                waypoints = []
+                for member in group:
+                    if not member['name'] == group:
+                        client.messages.create(
+                            to=member['phone'],
+                            from_="+12058983255",
+                            body=f"Hello {member['name']}, you are in a carpool with {group[0]['name']}."
+                        )
+                        waypoints.append(member['coordinates']['lat']['lng'])
