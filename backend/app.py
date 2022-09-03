@@ -65,6 +65,6 @@ def start():
 
 @app.route('/stop/<form_id>')
 def stop(form_id):
-    forms = Typeform(TYPEFORM).forms
-    res = forms.delete(form_id)
+    forms = Typeform(TYPEFORM).responses
+    res = forms.list(form_id)
     return res
