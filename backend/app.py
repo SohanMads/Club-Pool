@@ -17,7 +17,6 @@ MAPS_KEY = os.getenv('MAPS_KEY')
 
 @app.route('/start/<name>/<lat>/<long>/<datetime>')
 def start(name, lat, long, datetime):
-    url = "https://api.typeform.com/forms"
     gmaps = googlemaps.Client(key=MAPS_KEY)
     address = gmaps.reverse_geocode((lat, long))
     form = {}
@@ -70,8 +69,6 @@ def start(name, lat, long, datetime):
 
     forms = Typeform(TYPEFORM).forms
     res = forms.create(form)
-    
-
     return res['id']
 
 @app.route('/stop/<form_id>')
@@ -79,6 +76,7 @@ def stop(form_id):
     forms = Typeform(TYPEFORM).responses
     res = forms.list(form_id)
     groups = processData(res)
+    print(groups)
     textMembers('test', 'test', groups)
     return groups
 
@@ -88,16 +86,18 @@ def processData(data):
     gmaps = googlemaps.Client(key=MAPS_KEY)
 
     # Process form data
+    print(data['items'])
     for response in data['items']:
         geocode = gmaps.geocode(response['answers'][2]['text'])[0]['geometry']['location']
+        print(response['answers'])
         if response['answers'][3]['boolean']:
-              drivers.append({
+            drivers.append({
                 'phone': response['answers'][1]['phone_number'],
                 'name': response['answers'][0]['text'],
                 'lat': geocode['lat'], 
                 'long': geocode['lng'],
                 'seats': response['answers'][4]['number']
-              })
+            })
         else:
             people.append({
                 'phone': response['answers'][1]['phone_number'],
@@ -109,6 +109,7 @@ def processData(data):
 
         groups = {}
         spots = {}
+        
         while drivers:
             driver = drivers.pop(0)
             if not driver['name'] in groups:
@@ -122,6 +123,7 @@ def processData(data):
                 groups[driver].append(closest)
                 people.remove(closest)
                 drivers.append(driver)
+        print(people)
         if people:
             return {}
         return groups
@@ -131,26 +133,28 @@ def textMembers(dest, arrTime, groups):
     gmaps = googlemaps.Client(key=MAPS_KEY)
     client = Client(TWILIO_SID, TWILIO_TOKEN)
 
+    if not groups:
+        return False
     for group in groups:
         waypoints = []
         for member in groups[group]:
             if not member['name'] == group:
                 client.messages.create(
                     to=member['phone'],
-                    from_="+12058983255",
+                    from_="+19853226147",
                     body=f"Hello {member['name']}, you are in a carpool with {group}."
                 )
                 waypoints.append((member['lat'], member['long']))
             else:
                 driver = member
-
         params={
             'api': 1,
-            'origin': (driver['lat'], driver['long']),
-            'destination': dest,
+            'origin': gmaps.reverse_geocode((driver['lat'], driver['long']))[0]['formatted_address'],
+            'destination': gmaps.reverse_geocode(dest)[0]['formatted_address'],
             'waypoints': waypoints,
         }
         res = requests.get('https://www.google.com/maps/dir/', params=params)
-        print(res.text)
+        res.url
+        return True
 
         
