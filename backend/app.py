@@ -5,6 +5,7 @@ from typeform import Typeform
 from twilio.rest import Client
 import googlemaps
 import os
+import geopy
 
 app = Flask(__name__)
 
@@ -76,13 +77,48 @@ def start(name, address, time):
 def stop(form_id):
     forms = Typeform(TYPEFORM).responses
     res = forms.list(form_id)
-    processData(res)
-    return res
+    groups = processData(res)
+    return groups
 
 def processData(data):   
-    groups = []
+    people = []
+    drivers = []
     gmaps = googlemaps.Client(key=MAPS_KEY)
-    for response in data['items']:
-       geocode_result = gmaps.geocode(response['answers'][2]['text'])
-       print(geocode_result)
 
+    # Process form data
+    for response in data['items']:
+        geocode = gmaps.geocode(response['answers'][2]['text'])[0]['geometry']['location']
+        print(response['answers'][3]['boolean'])
+        if response['answers'][3]['boolean']:
+              drivers.append({
+                'phone': response['answers'][1]['phone_number'],
+                'name': response['answers'][0]['text'],
+                'coordinates': geocode,
+                'seats': response['answers'][4]['number']
+              })
+        else:
+            people.append({
+                'phone': response['answers'][1]['phone_number'],
+                'name': response['answers'][0]['text'],
+                'coordinates': geocode,
+                'seats': response['answers'][4]['number']
+                })
+
+        groups = {}
+        spots = {}
+        while drivers:
+            driver = drivers.pop(0)
+            if not driver['name'] in groups:
+                groups[driver['name']] = [driver]
+                spots[driver['name']] = driver['seats']+1
+            if len(groups[driver['name']]) < spots[driver['name']] and people:
+                closest = people[0]
+                for person in people:
+                    if geopy.distance.distance(driver['coordinates']['lat']['lng'], person['coordinates']['lat']['lng']) < geopy.distance.distance(driver['coordinates']['lat']['lng'], closest['coordinates']['lat']['lng']):
+                        closest = person
+                groups[driver].append(closest)
+                people.remove(closest)
+                drivers.append(driver)
+        if people:
+            return {}
+        return groups
