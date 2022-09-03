@@ -13,9 +13,6 @@ TYPEFORM = os.getenv('TYPEFORM')
 def start():
     url = "https://api.typeform.com/forms"
 
-    headers = {}
-    headers["Authorization"] = f"Bearer {TYPEFORM}"
-
     form = {}
     form["title"] = "Test Form Carpool"
     form["type"] = "form"
