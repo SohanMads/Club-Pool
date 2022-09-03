@@ -15,8 +15,8 @@ TWILIO_SID = os.getenv('TWILIO_SID')
 TWILIO_TOKEN = os.getenv('TWILIO_TOKEN')
 MAPS_KEY = os.getenv('MAPS_KEY')
 
-@app.route('/start/<name>/<address>/<time>/<phone>')
-def start(name, address, time):
+@app.route('/start/<name>/<address>/<datetime>')
+def start(name, address, datetime):
     url = "https://api.typeform.com/forms"
 
     form = {}
@@ -24,7 +24,7 @@ def start(name, address, time):
     form["type"] = "form"
     form["fields"] = [
         {
-            "title": "Can you attend the event?",
+            "title": f"Can you attend {name} at {address} on {datetime}",
             "type": "short_text",
             "validations": {
                 "required": True
