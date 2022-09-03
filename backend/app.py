@@ -17,4 +17,21 @@ def start():
     headers = {}
     headers["Authorization"] = "Bearer {TWILIO}"
 
-    #resp = requests.get(url, headers=headers)
+    form = {}
+    form["title"] = "Test Form Carpool"
+    form["type"] = "form"
+    form["fields"] = [
+        {
+            "id": "Name",
+            "title": "Name",
+            "type": "short_text",
+            "validations": True
+        },
+        {
+            "id": "Phone",
+            "title": "Phone Number",
+            "type": "phone_number",
+        }
+    ]
+
+    #resp = requests.post(url, data = form, headers=headers)
