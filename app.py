@@ -1,3 +1,4 @@
+from locale import format_string
 from wsgiref import headers
 from flask import Flask
 from dotenv import load_dotenv
@@ -173,9 +174,9 @@ def textMembers(dest, arrTime, groups):
                 client.messages.create(
                     to=member['phone'],
                     from_="+19853226147",
-                    body=f"Hello {member['name']}, you are in a carpool with {group}."
+                    body=f"Hello {member['name']}, you are in a carpool with {group}. Meet him at {gmaps.reverse_geocode(dest)[0]['formatted_address']} at {datetime.fromtimestamp(int(arrTime)).strftime('%I:%M %p')}."
                 )
-                waypoints.append(member['coordinates'])
+                waypoints.append(gmaps.reverse_geocode(member['coordinates'])[0]['formatted_address'])
             else:
                 driver = member
         params={
@@ -186,6 +187,14 @@ def textMembers(dest, arrTime, groups):
         }
         res = requests.get('https://www.google.com/maps/dir/', params=params)
         print(res.url)
+
+        ppl = [x['name'] for x in groups[driver['name']]]
+        pplStirng = ", ".join(ppl[:-1]) + " and " + ppl[-1]
+        client.messages.create(
+            to=driver['phone'],
+            from_="+19853226147",
+            body = f"Hello {driver['name']}, you are driving a carpool. You will be picking up {pplStirng}. Use this link for direactions: {res.url}"
+        )
         return True
 
 def get_responses(form_id):
