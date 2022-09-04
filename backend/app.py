@@ -11,8 +11,8 @@ app = Flask(__name__)
 
 load_dotenv('.env')
 TYPEFORM = os.getenv('TYPEFORM')
-TWILIO_SID = os.getenv('TWILIO_SID')
-TWILIO_TOKEN = os.getenv('TWILIO_TOKEN')
+TWILIO_SID = os.getenv('AC75fbf24b30c6292cecd2bc241f9a09b8')
+TWILIO_TOKEN = os.getenv('0383c91afc6ea41bbcd027e1d6404a35')
 MAPS_KEY = os.getenv('MAPS_KEY')
 
 @app.route('/start/<name>/<lat>/<long>/<datetime>')
