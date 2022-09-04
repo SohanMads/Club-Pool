@@ -27,8 +27,8 @@ def start(name, lat, long, timestamp):
     form["type"] = "form"
     form["fields"] = [
         {
-            "title": f"Can you attend {name} at {address} on {date.strftime('%b %d %Y %-I:%M %p')}?",
-            "type": "short_text",
+            "title": f"Can you attend {name} at {address} on {date.strftime('%M/%Y, %I:%M %p')}?",
+            "type": "yes_no",
             "validations": {
                 "required": True
             }
@@ -72,7 +72,8 @@ def start(name, lat, long, timestamp):
 
     forms = Typeform(TYPEFORM).forms
     res = forms.create(form)
-    return res['id']
+    print(res)
+    return {'id':res['id'], 'url':res['_links']['display']}
 
 @app.route('/stop/<form_id>')
 def stop(form_id):
@@ -81,6 +82,39 @@ def stop(form_id):
     groups = processData(res)
     textMembers('test', 'test', groups)
     return groups
+
+
+@app.route('/group/<form_id>')
+def getGroups(form_id):
+    forms = Typeform(TYPEFORM).responses
+    data = forms.list(form_id)
+    event = {}
+    drivers = 0
+    passengers = 0
+    for response in data['items']:
+        if response['answers'][3]['boolean']:
+            event.append({
+                'phone': response['answers'][1]['phone_number'],
+                'name': response['answers'][0]['text'],
+                'seats': response['answers'][4]['number'],
+                'isDriver': True
+            })
+            drivers += 1
+        else:
+            event.append({
+                'phone': response['answers'][1]['phone_number'],
+                'name': response['answers'][0]['text'],
+                'seats': 0,
+                'isDriver': False
+                })
+            passengers += 1
+    return {
+        'members': event,
+        'drivers': drivers,
+        'passengers': passengers
+    }
+
+
 
 def processData(data):   
     people = []
