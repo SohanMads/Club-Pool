@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from typeform import Typeform
 from twilio.rest import Client
 import googlemaps
+from datetime import datetime
 import os
 import requests
 from geopy import distance
@@ -11,20 +12,22 @@ app = Flask(__name__)
 
 load_dotenv('.env')
 TYPEFORM = os.getenv('TYPEFORM')
-TWILIO_SID = os.getenv('AC75fbf24b30c6292cecd2bc241f9a09b8')
-TWILIO_TOKEN = os.getenv('0383c91afc6ea41bbcd027e1d6404a35')
+TWILIO_SID = os.getenv('TWILIO_SID')
+TWILIO_TOKEN = os.getenv('TWILIO_TOKEN')
 MAPS_KEY = os.getenv('MAPS_KEY')
 
-@app.route('/start/<name>/<lat>/<long>/<datetime>')
-def start(name, lat, long, datetime):
+@app.route('/start/<name>/<lat>/<long>/<timestamp>')
+def start(name, lat, long, timestamp):
     gmaps = googlemaps.Client(key=MAPS_KEY)
-    address = gmaps.reverse_geocode((lat, long))
+    address = gmaps.reverse_geocode((lat, long))[0]['formatted_address']
+    date = datetime.fromtimestamp(int(timestamp))
+
     form = {}
     form["title"] = "Test Form Carpool"
     form["type"] = "form"
     form["fields"] = [
         {
-            "title": f"Can you attend {name} at {address} on {datetime}",
+            "title": f"Can you attend {name} at {address} on {date.strftime('%b %d %Y %-I:%M %p')}?",
             "type": "short_text",
             "validations": {
                 "required": True
@@ -76,7 +79,6 @@ def stop(form_id):
     forms = Typeform(TYPEFORM).responses
     res = forms.list(form_id)
     groups = processData(res)
-    print(groups)
     textMembers('test', 'test', groups)
     return groups
 
@@ -86,10 +88,8 @@ def processData(data):
     gmaps = googlemaps.Client(key=MAPS_KEY)
 
     # Process form data
-    print(data['items'])
     for response in data['items']:
         geocode = gmaps.geocode(response['answers'][2]['text'])[0]['geometry']['location']
-        print(response['answers'])
         if response['answers'][3]['boolean']:
             drivers.append({
                 'phone': response['answers'][1]['phone_number'],
@@ -123,7 +123,6 @@ def processData(data):
                 groups[driver].append(closest)
                 people.remove(closest)
                 drivers.append(driver)
-        print(people)
         if people:
             return {}
         return groups
@@ -154,7 +153,7 @@ def textMembers(dest, arrTime, groups):
             'waypoints': waypoints,
         }
         res = requests.get('https://www.google.com/maps/dir/', params=params)
-        res.url
+        print(res.url)
         return True
 
         
