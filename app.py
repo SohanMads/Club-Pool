@@ -189,11 +189,11 @@ def textMembers(dest, arrTime, groups):
         print(res.url)
 
         ppl = [x['name'] for x in groups[driver['name']]]
-        pplStirng = ", ".join(ppl[:-1]) + " and " + ppl[-1]
+        pplStirng = ", ".join(ppl[1:-1]) + " and " + ppl[-1]
         client.messages.create(
             to=driver['phone'],
             from_="+19853226147",
-            body = f"Hello {driver['name']}, you are driving a carpool. You will be picking up {pplStirng}. Use this link for direactions: {res.url}"
+            body = f"Hello {driver['name']}, you are driving a carpool. You will be picking up {pplStirng}. Use this link for directions: {res.url}"
         )
         return True
 
