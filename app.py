@@ -7,6 +7,7 @@ import googlemaps
 from datetime import datetime
 import os
 import requests
+import json
 from geopy import distance
 app = Flask(__name__)
 
@@ -72,16 +73,16 @@ def start(name, lat, long, timestamp):
 
     forms = Typeform(TYPEFORM).forms
     res = forms.create(form)
-    print(res)
     return {'id':res['id'], 'url':res['_links']['display']}
 
-@app.route('/stop/<form_id>')
-def stop(form_id):
-    forms = Typeform(TYPEFORM).responses
-    res = forms.list(form_id)
-    groups = processData(res)
-    textMembers('test', 'test', groups)
-    return groups
+@app.route('/stop/<form_id>/<lat>/<long>/<timestamp>')
+def stop(form_id, lat, long, timestamp):
+    # forms = Typeform(TYPEFORM).responses
+    res = get_responses(form_id)
+    data = json.loads(res)
+    groups = processData(data)
+    textMembers((lat, long), timestamp, groups)
+    return data
 
 
 @app.route('/group/<form_id>')
@@ -120,49 +121,46 @@ def processData(data):
     people = []
     drivers = []
     gmaps = googlemaps.Client(key=MAPS_KEY)
-
     # Process form data
-    for response in data['items']:
-        geocode = gmaps.geocode(response['answers'][2]['text'])[0]['geometry']['location']
-        if response['answers'][3]['boolean']:
+    for rep in data['items']:
+        geocode = gmaps.geocode(rep['answers'][3]['text'])[0]['geometry']['location']
+        if rep['answers'][4]['boolean']:
             drivers.append({
-                'phone': response['answers'][1]['phone_number'],
-                'name': response['answers'][0]['text'],
-                'lat': geocode['lat'], 
-                'long': geocode['lng'],
-                'seats': response['answers'][4]['number']
+                'phone': rep['answers'][2]['phone_number'],
+                'name': rep['answers'][1]['text'],
+                'coordinates': (geocode['lat'],geocode['lng']),
+                'seats': rep['answers'][5]['number']
             })
+            print(drivers[-1])
         else:
             people.append({
-                'phone': response['answers'][1]['phone_number'],
-                'name': response['answers'][0]['text'],
-                'lat': geocode['lat'], 
-                'long': geocode['lng'],
-                'seats': response['answers'][4]['number']
+                'phone': rep['answers'][2]['phone_number'],
+                'name': rep['answers'][1]['text'],
+                'coordinates': (geocode['lat'],geocode['lng']),
+                'seats': 0
                 })
+            print(people[-1])
 
-        groups = {}
-        spots = {}
-        
-        while drivers:
-            driver = drivers.pop(0)
-            if not driver['name'] in groups:
-                groups[driver['name']] = [driver]
-                spots[driver['name']] = driver['seats']+1
-            if len(groups[driver['name']]) < spots[driver['name']] and people:
-                closest = people[0]
-                for person in people:
-                    if distance.distance(driver['coordinates'], person['coordinates']) < distance.distance(driver['coordinates'], closest['coordinates']):
-                        closest = person
-                groups[driver].append(closest)
-                people.remove(closest)
-                drivers.append(driver)
-        if people:
-            return {}
-        return groups
+    spots = {}
+    groups = {}
+    while drivers:
+        driver = drivers.pop(0)
+        if not driver['name'] in groups:
+            groups[driver['name']] = [driver]
+            spots[driver['name']] = driver['seats']+2
+        if len(groups[driver['name']]) < spots[driver['name']] and people:
+            closest = people[0]
+            for i, person in enumerate(people):
+                if distance.distance(driver['coordinates'], person['coordinates']) < distance.distance(driver['coordinates'], closest['coordinates']):
+                    closest = person
+            groups[driver['name']].append(closest)
+            people.remove(closest)
+            drivers.append(driver)
+    if people:
+        return {}
+    return groups
 
 def textMembers(dest, arrTime, groups):
-    dest = ['39.9717', '-74.1529']
     gmaps = googlemaps.Client(key=MAPS_KEY)
     client = Client(TWILIO_SID, TWILIO_TOKEN)
 
@@ -177,12 +175,12 @@ def textMembers(dest, arrTime, groups):
                     from_="+19853226147",
                     body=f"Hello {member['name']}, you are in a carpool with {group}."
                 )
-                waypoints.append((member['lat'], member['long']))
+                waypoints.append(member['coordinates'])
             else:
                 driver = member
         params={
             'api': 1,
-            'origin': gmaps.reverse_geocode((driver['lat'], driver['long']))[0]['formatted_address'],
+            'origin': gmaps.reverse_geocode(driver['coordinates'])[0]['formatted_address'],
             'destination': gmaps.reverse_geocode(dest)[0]['formatted_address'],
             'waypoints': waypoints,
         }
@@ -190,6 +188,18 @@ def textMembers(dest, arrTime, groups):
         print(res.url)
         return True
 
+def get_responses(form_id):
+    url = f"https://api.typeform.com/forms/{form_id}/responses"
+
+    headers = {
+    'Content-Type': 'text/plain',
+    'Accept': 'application/json',
+    'Authorization': f'Bearer {TYPEFORM}'
+    }
+
+    response = requests.request("GET", url, headers=headers)
+
+    return response.text
 if __name__ == '__main__':
     # Threaded option to enable multiple instances for multiple user access support
     app.run(threaded=True, port=5000)
