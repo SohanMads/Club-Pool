@@ -90,22 +90,23 @@ def stop(form_id, lat, long, timestamp):
 def getGroups(form_id):
     forms = Typeform(TYPEFORM).responses
     data = forms.list(form_id)
-    event = {}
+    event = []
     drivers = 0
     passengers = 0
     for response in data['items']:
-        if response['answers'][3]['boolean']:
+        print(response)
+        if response['answers'][4]['boolean']:
             event.append({
-                'phone': response['answers'][1]['phone_number'],
-                'name': response['answers'][0]['text'],
-                'seats': response['answers'][4]['number'],
+                'phone': response['answers'][2]['phone_number'],
+                'name': response['answers'][1]['text'],
+                'seats': response['answers'][5]['number'],
                 'isDriver': True
             })
             drivers += 1
         else:
             event.append({
-                'phone': response['answers'][1]['phone_number'],
-                'name': response['answers'][0]['text'],
+                'phone': response['answers'][2]['phone_number'],
+                'name': response['answers'][1]['text'],
                 'seats': 0,
                 'isDriver': False
                 })
