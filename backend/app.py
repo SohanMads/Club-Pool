@@ -156,4 +156,5 @@ def textMembers(dest, arrTime, groups):
         print(res.url)
         return True
 
-        
+if __name__ == '__main__':
+    app.run()
