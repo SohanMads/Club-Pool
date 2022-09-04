@@ -155,3 +155,6 @@ def textMembers(dest, arrTime, groups):
         res = requests.get('https://www.google.com/maps/dir/', params=params)
         print(res.url)
         return True
+
+if __name__ == '__main__':
+    app.run()
